@@ -26,7 +26,7 @@ while [ $# -gt 0 ]; do
     --repo-url) REPO_URL="$2"; shift 2;;
     --branch) BRANCH="$2"; shift 2;;
     --token) TOKEN="$2"; shift 2;;
-    --hidden-url) TOKEN="$2"; shift 2;;
+    --hidden-url) HIDDEN_URL="$2"; shift 2;;
     --keep) KEEP_RELEASES="$2"; shift 2;;
     *) echo "Unknown arg: $1" >&2; exit 1;;
   esac
