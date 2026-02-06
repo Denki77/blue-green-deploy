@@ -143,9 +143,7 @@ fi
 # Each release gets a symlink at public/<WEBHOOK_PATH>.
 REL_PUBLIC_WEBHOOK="$REL_DIR/public/$WEBHOOK_PATH"
 mkdir -p "$(dirname "$REL_PUBLIC_WEBHOOK")"
-if [ -f "$SHARED_DIR/webhook/deploy.php" ]; then
-  ln -sfn "$SHARED_DIR/webhook/deploy.php" "$REL_PUBLIC_WEBHOOK"
-fi
+ln -sfn "$SHARED_DIR/webhook/deploy.php" "$REL_PUBLIC_WEBHOOK"
 
 cd "$REL_DIR"
 

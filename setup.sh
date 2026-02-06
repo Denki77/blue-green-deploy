@@ -78,13 +78,18 @@ fi
 echo "6) Running initial deploy..."
 env BASE_DIR="$BASE_DIR" bash "$BASE_DIR/deploy.sh" || true
 
-echo "7) ensure public webhook link exists inside current/public"
-if [ -L "$BASE_DIR/current/public/$HIDDEN_URL/deploy.php" ] || [ -f "$BASE_DIR/current/public/$HIDDEN_URL/deploy.php" ]; then
-  :
-else
-  mkdir -p "$BASE_DIR/current/public/$HIDDEN_URL"
-  ln -sfn "$BASE_DIR/shared/webhook/deploy.php" "$BASE_DIR/current/public/$HIDDEN_URL/deploy.php"
+echo "7) ensure public webhook is a symlink to shared/webhook/deploy.php"
+WEBHOOK_PUBLIC_DIR="$BASE_DIR/current/public/$HIDDEN_URL"
+WEBHOOK_PUBLIC_PATH="$WEBHOOK_PUBLIC_DIR/deploy.php"
+WEBHOOK_SHARED_PATH="$BASE_DIR/shared/webhook/deploy.php"
+
+mkdir -p "$WEBHOOK_PUBLIC_DIR"
+
+if [ -e "$WEBHOOK_PUBLIC_PATH" ] && [ ! -L "$WEBHOOK_PUBLIC_PATH" ]; then
+  rm -f "$WEBHOOK_PUBLIC_PATH"
 fi
+
+ln -sfn "$WEBHOOK_SHARED_PATH" "$WEBHOOK_PUBLIC_PATH"
 
 echo "8) create DocumentRoot symlink"
 rm -rf "$PUBLIC_LINK"

@@ -32,22 +32,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     exit;
 }
 
-$home = $_SERVER['HOME'] ?? '';
-// We prefer BASE_DIR from config, but need an initial guess to locate config.
-// Common default:
-$baseGuess = ($home !== '') ? ($home . '/deploy') : '';
-$configPath = $baseGuess . '/shared/.deploy-webhook';
+// --- locate config relative to this file ---
+$sharedDir = dirname(__DIR__);                 // .../deploy/shared
+$configPath = $sharedDir . '/.deploy-webhook'; // .../deploy/shared/.deploy-webhook
+
+if (!is_file($configPath)) {
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Config not found.\n";
+    exit;
+}
 
 $cfg = parse_kv_file($configPath);
 
-// If config specifies BASE_DIR elsewhere, reload from that location (optional robustness)
-if (isset($cfg['BASE_DIR']) && $cfg['BASE_DIR'] !== '' && $cfg['BASE_DIR'] !== $baseGuess) {
-    $configPath = rtrim($cfg['BASE_DIR'], '/') . '/shared/.deploy-webhook';
-    $cfg = parse_kv_file($configPath);
-}
-
 $token = $cfg['DEPLOY_TOKEN'] ?? '';
-$baseDir = $cfg['BASE_DIR'] ?? $baseGuess;
+$baseDir = $cfg['BASE_DIR'] ?? '';
 
 if ($token === '' || $baseDir === '') {
     http_response_code(500);
@@ -73,6 +72,8 @@ if (!is_file($script)) {
     echo "deploy.sh not found\n";
     exit;
 }
+
+$home = dirname($baseDir);
 
 $cmd = sprintf(
     'HOME=%s BASE_DIR=%s nohup /bin/bash -lc %s >> %s 2>&1 & echo OK',
