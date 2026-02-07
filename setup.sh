@@ -57,6 +57,7 @@ chmod +x "$BASE_DIR/deploy.sh"
 
 echo "3) install deploy.php"
 cp "$SCRIPT_DIR/deploy.php" "$BASE_DIR/shared/webhook/deploy.php"
+cp "$SCRIPT_DIR/.htaccess" "$BASE_DIR/shared/webhook/.htaccess"
 
 echo "4) write config"
 cat > "$BASE_DIR/shared/.deploy-webhook" <<EOF
@@ -78,18 +79,15 @@ fi
 echo "6) Running initial deploy..."
 env BASE_DIR="$BASE_DIR" bash "$BASE_DIR/deploy.sh" || true
 
-echo "7) ensure public webhook is a symlink to shared/webhook/deploy.php"
+echo "7) ensure public webhook symlinks exist inside current/public"
 WEBHOOK_PUBLIC_DIR="$BASE_DIR/current/public/$HIDDEN_URL"
-WEBHOOK_PUBLIC_PATH="$WEBHOOK_PUBLIC_DIR/deploy.php"
-WEBHOOK_SHARED_PATH="$BASE_DIR/shared/webhook/deploy.php"
-
 mkdir -p "$WEBHOOK_PUBLIC_DIR"
 
-if [ -e "$WEBHOOK_PUBLIC_PATH" ] && [ ! -L "$WEBHOOK_PUBLIC_PATH" ]; then
-  rm -f "$WEBHOOK_PUBLIC_PATH"
-fi
+rm -f "$WEBHOOK_PUBLIC_DIR/deploy.php" 2>/dev/null || true
+ln -sfn "$BASE_DIR/shared/webhook/deploy.php" "$WEBHOOK_PUBLIC_DIR/deploy.php"
 
-ln -sfn "$WEBHOOK_SHARED_PATH" "$WEBHOOK_PUBLIC_PATH"
+rm -f "$WEBHOOK_PUBLIC_DIR/.htaccess" 2>/dev/null || true
+ln -sfn "$BASE_DIR/shared/webhook/.htaccess" "$WEBHOOK_PUBLIC_DIR/.htaccess"
 
 echo "8) create DocumentRoot symlink"
 rm -rf "$PUBLIC_LINK"
@@ -98,3 +96,4 @@ ln -s "$BASE_DIR/current/public" "$PUBLIC_LINK"
 echo "Setup done."
 echo "Webhook URL should be: https://<your-domain>/$HIDDEN_URL/deploy.php"
 echo "X-Deploy-Token in Header: $TOKEN"
+echo "Add dot env into: $BASE_DIR/shared"

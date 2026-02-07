@@ -1,0 +1,55 @@
+Options -Indexes
+
+# Apache 2.2
+Order deny,allow
+Deny from all
+
+# Apache 2.4+
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+
+<Files "deploy.php">
+  # Apache 2.2 allow
+  Order allow,deny
+  Allow from all
+
+  # Apache 2.4 allow
+  <IfModule mod_authz_core.c>
+    Require all granted
+  </IfModule>
+
+  # Только POST
+  <LimitExcept POST>
+    # Apache 2.2
+    Order deny,allow
+    Deny from all
+
+    # Apache 2.4
+    <IfModule mod_authz_core.c>
+      Require all denied
+    </IfModule>
+  </LimitExcept>
+</Files>
+
+<FilesMatch "\.php$">
+  # Apache 2.2
+  Order deny,allow
+  Deny from all
+
+  # Apache 2.4
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</FilesMatch>
+
+<Files "deploy.php">
+  # Apache 2.2
+  Order allow,deny
+  Allow from all
+
+  # Apache 2.4
+  <IfModule mod_authz_core.c>
+    Require all granted
+  </IfModule>
+</Files>

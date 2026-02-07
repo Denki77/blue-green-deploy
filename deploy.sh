@@ -144,6 +144,7 @@ fi
 REL_PUBLIC_WEBHOOK="$REL_DIR/public/$WEBHOOK_PATH"
 mkdir -p "$(dirname "$REL_PUBLIC_WEBHOOK")"
 ln -sfn "$SHARED_DIR/webhook/deploy.php" "$REL_PUBLIC_WEBHOOK"
+ln -sfn "$SHARED_DIR/webhook/.htaccess" "$REL_WEBHOOK_DIR/.htaccess"
 
 cd "$REL_DIR"
 

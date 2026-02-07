@@ -63,6 +63,21 @@ if (!hash_equals($token, $hdr)) {
     exit;
 }
 
+// simple rate limit: at most 1 request per 10 seconds
+$rateFile = $sharedDir . '/.deploy-rate';
+$now = time();
+$last = 0;
+if (is_file($rateFile)) {
+    $last = (int)trim((string)@file_get_contents($rateFile));
+}
+if ($last > 0 && ($now - $last) < 10) {
+    http_response_code(429);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Too Many Requests\n";
+    exit;
+}
+@file_put_contents($rateFile, (string)$now, LOCK_EX);
+
 $script = rtrim($baseDir, '/') . '/deploy.sh';
 $log = rtrim($baseDir, '/') . '/shared/deploy.log';
 
