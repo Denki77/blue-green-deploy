@@ -144,7 +144,7 @@ fi
 REL_PUBLIC_WEBHOOK="$REL_DIR/public/$WEBHOOK_PATH"
 mkdir -p "$(dirname "$REL_PUBLIC_WEBHOOK")"
 ln -sfn "$SHARED_DIR/webhook/deploy.php" "$REL_PUBLIC_WEBHOOK"
-ln -sfn "$SHARED_DIR/webhook/.htaccess" "$REL_WEBHOOK_DIR/.htaccess"
+ln -sfn "$SHARED_DIR/webhook/.htaccess" "$REL_PUBLIC_WEBHOOK/.htaccess"
 
 cd "$REL_DIR"
 
@@ -187,6 +187,7 @@ fi
 echo "$TARGET_COMMIT" > "$DEPLOYED_COMMIT_FILE"
 
 # ---------- cleanup old releases ----------
+# shellcheck disable=SC2012
 ls -1dt "$RELEASES_DIR/"* 2>/dev/null | tail -n +"$((KEEP_RELEASES+1))" | xargs -r rm -rf
 
 echo "OK: release=$RELEASE commit=$TARGET_COMMIT"
