@@ -51,6 +51,7 @@ BRANCH="${BRANCH:-main}"
 PUBLIC_LINK="${PUBLIC_LINK:-}"
 KEEP_RELEASES="${KEEP_RELEASES:-5}"
 WEBHOOK_PATH="${WEBHOOK_PATH:-_deploy/deploy.php}"
+WEBHOOK_DIR="${WEBHOOK_DIR:-_deploy}"
 
 REPO_DIR="$BASE_DIR/repo"
 RELEASES_DIR="$BASE_DIR/releases"
@@ -142,9 +143,10 @@ fi
 # We keep canonical webhook script in shared/webhook/deploy.php (managed by you).
 # Each release gets a symlink at public/<WEBHOOK_PATH>.
 REL_PUBLIC_WEBHOOK="$REL_DIR/public/$WEBHOOK_PATH"
+REL_PUBLIC_WEBHOOK_DIR="$REL_DIR/public/$WEBHOOK_DIR"
 mkdir -p "$(dirname "$REL_PUBLIC_WEBHOOK")"
 ln -sfn "$SHARED_DIR/webhook/deploy.php" "$REL_PUBLIC_WEBHOOK"
-ln -sfn "$SHARED_DIR/webhook/.htaccess" "$REL_PUBLIC_WEBHOOK/.htaccess"
+ln -sfn "$SHARED_DIR/webhook/.htaccess" "$REL_PUBLIC_WEBHOOK_DIR/.htaccess"
 
 cd "$REL_DIR"
 
