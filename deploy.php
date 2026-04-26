@@ -63,6 +63,20 @@ if (!hash_equals($token, $hdr)) {
     exit;
 }
 
+$targetCommit = '';
+if (isset($_POST['commit']) && is_string($_POST['commit'])) {
+    $targetCommit = trim($_POST['commit']);
+} elseif (isset($_GET['commit']) && is_string($_GET['commit'])) {
+    $targetCommit = trim($_GET['commit']);
+}
+
+if ($targetCommit !== '' && !preg_match('/^[0-9a-f]{40}$/i', $targetCommit)) {
+    http_response_code(400);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Invalid commit\n";
+    exit;
+}
+
 // simple rate limit: at most 1 request per 10 seconds
 $rateFile = $sharedDir . '/.deploy-rate';
 $now = time();
@@ -91,9 +105,10 @@ if (!is_file($script)) {
 $home = dirname($baseDir);
 
 $cmd = sprintf(
-    'HOME=%s BASE_DIR=%s nohup /bin/bash -lc %s >> %s 2>&1 & echo OK',
+    'HOME=%s BASE_DIR=%s TARGET_COMMIT=%s nohup /bin/bash -lc %s >> %s 2>&1 & echo OK',
     escapeshellarg($home),
     escapeshellarg($baseDir),
+    escapeshellarg($targetCommit),
     escapeshellarg($script),
     escapeshellarg($log)
 );

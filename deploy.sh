@@ -93,7 +93,17 @@ cd "$REPO_DIR"
 
 # ---------- fetch ONLY branch ----------
 git fetch --prune --no-tags origin "$BRANCH"
-TARGET_COMMIT="$(git rev-parse --verify "origin/$BRANCH^{commit}")"
+TARGET_COMMIT_OVERRIDE="${TARGET_COMMIT:-}"
+
+if [ -n "$TARGET_COMMIT_OVERRIDE" ]; then
+  TARGET_COMMIT="$(git rev-parse --verify "${TARGET_COMMIT_OVERRIDE}^{commit}")"
+  if ! git merge-base --is-ancestor "$TARGET_COMMIT" "origin/$BRANCH"; then
+    echo "ERROR: target commit $TARGET_COMMIT is not reachable from origin/$BRANCH" >&2
+    exit 1
+  fi
+else
+  TARGET_COMMIT="$(git rev-parse --verify "origin/$BRANCH^{commit}")"
+fi
 
 # ---------- skip if no changes ----------
 CURRENT_COMMIT=""
