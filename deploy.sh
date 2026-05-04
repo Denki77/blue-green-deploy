@@ -1,6 +1,106 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+write_public_index_wrapper() {
+  local public_link="$1"
+  local base_dir="$2"
+
+  cat > "$public_link/index.php" <<EOF
+<?php
+
+use Symfony\Component\ErrorHandler\Debug;
+use Symfony\Component\HttpFoundation\Request;
+
+\$releaseRoot = '$(printf "%s" "$base_dir/current")';
+
+require \$releaseRoot . '/vendor/autoload.php';
+
+if (\$_SERVER['APP_DEBUG'] ?? false) {
+    umask(0000);
+    Debug::enable();
+}
+
+return (require \$releaseRoot . '/config/bootstrap.php')
+    ->handle(Request::createFromGlobals())
+    ->send();
+EOF
+}
+
+normalize_release_permissions() {
+  local rel_dir="$1"
+  local shared_dir="$2"
+
+  [ -d "$rel_dir" ] || return 0
+
+  find "$rel_dir" -type d -exec chmod 755 {} + 2>/dev/null || true
+  find "$rel_dir" -type f -exec chmod 644 {} + 2>/dev/null || true
+
+  if [ -d "$rel_dir/var" ]; then
+    chmod 775 "$rel_dir/var" 2>/dev/null || true
+  fi
+
+  if [ -f "$shared_dir/.env" ]; then
+    chmod 600 "$shared_dir/.env" 2>/dev/null || true
+  fi
+
+  if [ -f "$shared_dir/.deploy-webhook" ]; then
+    chmod 600 "$shared_dir/.deploy-webhook" 2>/dev/null || true
+  fi
+
+  if [ -f "$shared_dir/deploy.log" ]; then
+    chmod 640 "$shared_dir/deploy.log" 2>/dev/null || true
+  fi
+}
+
+publish_document_root() {
+  local source_dir="$1"
+  local public_link="$2"
+  local public_name
+
+  public_name="$(basename "$public_link")"
+
+  [ -n "$public_link" ] || return 0
+  [ -d "$source_dir" ] || {
+    echo "ERROR: source public dir not found: $source_dir" >&2
+    exit 1
+  }
+
+  if [ "$public_name" != "public_html" ] && { [ -L "$public_link" ] || [ ! -e "$public_link" ]; }; then
+    rm -rf "$public_link" 2>/dev/null || true
+    ln -s "$source_dir" "$public_link"
+    return 0
+  fi
+
+  if [ -L "$public_link" ] && [ "$public_name" = "public_html" ]; then
+    rm -f "$public_link"
+    mkdir -p "$public_link"
+  fi
+
+  if [ -d "$public_link" ]; then
+    find "$public_link" -mindepth 1 -maxdepth 1 \
+      ! -name '.well-known' \
+      ! -name 'cgi-bin' \
+      -exec rm -rf {} +
+
+    if [ "$public_name" = "public_html" ]; then
+      cp -R "$source_dir"/. "$public_link"/
+      write_public_index_wrapper "$public_link" "$BASE_DIR"
+    else
+      (
+        cd "$source_dir"
+        find . -mindepth 1 -maxdepth 1 -exec sh -c '
+          item="${1#./}"
+          ln -sfn "'"$source_dir"'/$item" "'"$public_link"'/$item"
+        ' sh {} \;
+      )
+    fi
+    return 0
+  fi
+
+  echo "ERROR: PUBLIC_LINK exists and is not a directory or symlink: $public_link" >&2
+  exit 1
+}
+
 # ---------- config loader ----------
 read_cfg() {
   # usage: read_cfg /path/to/file
@@ -158,6 +258,8 @@ mkdir -p "$(dirname "$REL_PUBLIC_WEBHOOK")"
 ln -sfn "$SHARED_DIR/webhook/deploy.php" "$REL_PUBLIC_WEBHOOK"
 ln -sfn "$SHARED_DIR/webhook/.htaccess" "$REL_PUBLIC_WEBHOOK_DIR/.htaccess"
 
+normalize_release_permissions "$REL_DIR" "$SHARED_DIR"
+
 cd "$REL_DIR"
 
 # ---------- composer (global or shared fallback) ----------
@@ -192,8 +294,7 @@ ln -sfn "$REL_DIR" "$BASE_DIR/current"
 
 # Optional: keep DocumentRoot as a symlink in filesystem
 if [ -n "$PUBLIC_LINK" ]; then
-  rm -rf "$PUBLIC_LINK" 2>/dev/null || true
-  ln -s "$BASE_DIR/current/public" "$PUBLIC_LINK"
+  publish_document_root "$BASE_DIR/current/public" "$PUBLIC_LINK"
 fi
 
 echo "$TARGET_COMMIT" > "$DEPLOYED_COMMIT_FILE"
