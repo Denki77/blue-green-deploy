@@ -45,8 +45,8 @@ publish_document_root() {
     return 0
   fi
 
-  if [ -L "$public_link" ] && [ "$public_name" = "public_html" ]; then
-    rm -f "$public_link"
+  if [ "$public_name" = "public_html" ] && [ ! -d "$public_link" ]; then
+    rm -rf "$public_link" 2>/dev/null || true
     mkdir -p "$public_link"
   fi
 
@@ -182,6 +182,13 @@ KEEP_RELEASES=$KEEP_RELEASES
 EOF
 chmod 600 "$BASE_DIR/shared/.deploy-webhook"
 
+HOME_ENV="${HOME:-$(cd "$BASE_DIR/.." && pwd)}/.env"
+if [ ! -f "$BASE_DIR/shared/.env" ] && [ -f "$HOME_ENV" ]; then
+  echo "4.1) copy existing .env from home directory"
+  cp "$HOME_ENV" "$BASE_DIR/shared/.env"
+  chmod 600 "$BASE_DIR/shared/.env"
+fi
+
 echo "5) create repo"
 if [ ! -d "$BASE_DIR/repo/.git" ]; then
   git clone --no-tags --depth 50 --single-branch --branch "$BRANCH" "$REPO_URL" "$BASE_DIR/repo"
@@ -202,7 +209,7 @@ ln -sfn "$BASE_DIR/shared/webhook/deploy.php" "$WEBHOOK_PUBLIC_DIR/deploy.php"
 rm -f "$WEBHOOK_PUBLIC_DIR/.htaccess" 2>/dev/null || true
 ln -sfn "$BASE_DIR/shared/webhook/.htaccess" "$WEBHOOK_PUBLIC_DIR/.htaccess"
 
-echo "8) create DocumentRoot symlink"
+echo "8) publish DocumentRoot"
 publish_document_root "$BASE_DIR/current/public" "$PUBLIC_LINK"
 
 set_default_permissions "$BASE_DIR"

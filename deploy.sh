@@ -71,8 +71,8 @@ publish_document_root() {
     return 0
   fi
 
-  if [ -L "$public_link" ] && [ "$public_name" = "public_html" ]; then
-    rm -f "$public_link"
+  if [ "$public_name" = "public_html" ] && [ ! -d "$public_link" ]; then
+    rm -rf "$public_link" 2>/dev/null || true
     mkdir -p "$public_link"
   fi
 
