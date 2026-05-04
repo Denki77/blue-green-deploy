@@ -1,31 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-write_public_index_wrapper() {
-  local public_link="$1"
-  local base_dir="$2"
-
-  cat > "$public_link/index.php" <<EOF
-<?php
-
-use Symfony\Component\ErrorHandler\Debug;
-use Symfony\Component\HttpFoundation\Request;
-
-\$releaseRoot = '$(printf "%s" "$base_dir/current")';
-
-require \$releaseRoot . '/vendor/autoload.php';
-
-if (\$_SERVER['APP_DEBUG'] ?? false) {
-    umask(0000);
-    Debug::enable();
-}
-
-return (require \$releaseRoot . '/config/bootstrap.php')
-    ->handle(Request::createFromGlobals())
-    ->send();
-EOF
-}
-
 normalize_release_permissions() {
   local rel_dir="$1"
   local shared_dir="$2"
@@ -55,9 +30,6 @@ normalize_release_permissions() {
 publish_document_root() {
   local source_dir="$1"
   local public_link="$2"
-  local public_name
-
-  public_name="$(basename "$public_link")"
 
   [ -n "$public_link" ] || return 0
   [ -d "$source_dir" ] || {
@@ -65,40 +37,8 @@ publish_document_root() {
     exit 1
   }
 
-  if [ "$public_name" != "public_html" ] && { [ -L "$public_link" ] || [ ! -e "$public_link" ]; }; then
-    rm -rf "$public_link" 2>/dev/null || true
-    ln -s "$source_dir" "$public_link"
-    return 0
-  fi
-
-  if [ "$public_name" = "public_html" ] && [ ! -d "$public_link" ]; then
-    rm -rf "$public_link" 2>/dev/null || true
-    mkdir -p "$public_link"
-  fi
-
-  if [ -d "$public_link" ]; then
-    find "$public_link" -mindepth 1 -maxdepth 1 \
-      ! -name '.well-known' \
-      ! -name 'cgi-bin' \
-      -exec rm -rf {} +
-
-    if [ "$public_name" = "public_html" ]; then
-      cp -R "$source_dir"/. "$public_link"/
-      write_public_index_wrapper "$public_link" "$BASE_DIR"
-    else
-      (
-        cd "$source_dir"
-        find . -mindepth 1 -maxdepth 1 -exec sh -c '
-          item="${1#./}"
-          ln -sfn "'"$source_dir"'/$item" "'"$public_link"'/$item"
-        ' sh {} \;
-      )
-    fi
-    return 0
-  fi
-
-  echo "ERROR: PUBLIC_LINK exists and is not a directory or symlink: $public_link" >&2
-  exit 1
+  rm -rf "$public_link" 2>/dev/null || true
+  ln -s "$source_dir" "$public_link"
 }
 
 # ---------- config loader ----------
@@ -258,8 +198,6 @@ mkdir -p "$(dirname "$REL_PUBLIC_WEBHOOK")"
 ln -sfn "$SHARED_DIR/webhook/deploy.php" "$REL_PUBLIC_WEBHOOK"
 ln -sfn "$SHARED_DIR/webhook/.htaccess" "$REL_PUBLIC_WEBHOOK_DIR/.htaccess"
 
-normalize_release_permissions "$REL_DIR" "$SHARED_DIR"
-
 cd "$REL_DIR"
 
 # ---------- composer (global or shared fallback) ----------
@@ -283,6 +221,8 @@ if [ -f "bin/console" ]; then
   php bin/console cache:clear --env=prod
   php bin/console cache:warmup --env=prod
 fi
+
+normalize_release_permissions "$REL_DIR" "$SHARED_DIR"
 
 echo "$TARGET_COMMIT" > "$REL_DIR/.DEPLOYED_COMMIT"
 
